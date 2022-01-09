@@ -24,6 +24,8 @@
 from tkinter import Menu, Widget
 from tkinter import RIGHT, DISABLED
 from tkinter.font import nametofont
+from typing import Iterable
+
 
 __all__ = ["InfoPopUp"]
 
@@ -31,9 +33,9 @@ __all__ = ["InfoPopUp"]
 class InfoPopUp(Menu):
     def __init__(self,
                  target: Widget,
-                 info_lines: iter,
-                 pop_pos: tuple[int, int] = (10, 10),
-                 timers: tuple[int, int, int] = (2000, 500, 200),
+                 info_lines: Iterable,
+                 relpos: tuple[int, int] = (10, 10),
+                 timers: tuple[int, int, int] = (2000, 500, 0),
                  foreground: str = '#000000',
                  background: str = '#FFFFFF',
                  font=('Consolas', 7),
@@ -44,23 +46,23 @@ class InfoPopUp(Menu):
         Tk-popup-menu to function as info-/disclaimer-popup.
 
         info_lines = [
-        str,  ............> line
-        str,  ............> line
-        None,  .......> ------------------
-        str  .............> line
+          - str,  --> line;
+          - str,  --> line;
+          - None, --> ------------------;
+          - str   --> line
         ]
 
         :param target: the target widget
-        :param info_lines: [line: str, separator: None]
-        :param pop_pos: x/y adjustment
-        :param timers: ms (popup, close, clear)
-        :param foreground: info-popup foreground (-> Menu.disabledforeground)
-        :param background: info-popup background
+        :param info_lines: [str=line, None=separator]
+        :param relpos: x/y adjustment
+        :param timers: ms (do popup, popup leaving closing, target leaving closing)
+        :param foreground: info-popup foreground (-> Menu.disabledforeground & Menu.activeforeground)
+        :param background: info-popup background (-> Menu.background & Menu.activebackground)
         :param font: tk font
         :param pre_pop_call: called before popup
         """
 
-        self.pop_pos = pop_pos[0], pop_pos[1]
+        self.pop_pos = relpos[0], relpos[1]
         self.popup_timer, self.unpost_timer, self.clear_timer = timers
 
         self.pre_pop_call = (pre_pop_call if pre_pop_call else lambda: None)
@@ -69,8 +71,7 @@ class InfoPopUp(Menu):
                       target,
                       tearoff=0,
                       disabledforeground=foreground, activeforeground=foreground,
-                      activebackground=background,
-                      bg=background,
+                      bg=background, activebackground=background,
                       bd=0, activeborderwidth=0
                       )
 
@@ -157,26 +158,26 @@ if __name__ == "__main__":
     bigger_area = Label(t, text="bigger area", height=100, width=100, background='black', foreground='white')
     bigger_area.pack()
 
-    InfoPopUp(label, ['info line of label'])
+    InfoPopUp(label, ['info line of label'], timers=(0, 0, 0), font=("Consolas", 10))
 
     InfoPopUp(button, ['info line', 'with new line', None, 'and separator'])
 
     InfoPopUp(o_o,
               ['...'],
-              pop_pos=(-2, -2),
+              relpos=(-2, -2),
               timers=(5000, 100, 100),
               foreground='white',
               background='pink',
               font=nametofont("TkFixedFont"))
 
-    bigger_area_pop = InfoPopUp(bigger_area, ['actual position'])
+    bigger_area_pop = InfoPopUp(bigger_area, ['actual position ...'])
 
 
     def pre_configure():
         bigger_area_pop.entryconfigure(0,
-                                       label='actual position: |%d _%d' % (
-                                           bigger_area_pop.winfo_pointery(),
-                                           bigger_area_pop.winfo_pointerx()
+                                       label='actual position: x=%d y=%d' % (
+                                           bigger_area_pop.winfo_pointerx(),
+                                           bigger_area_pop.winfo_pointery()
                                        ))
 
 

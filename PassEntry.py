@@ -43,28 +43,26 @@ class PassEntry(Entry):
                  ):
 
         """
-        Password entry with delayed hiding.
-        Alternative to `Entry(master, show="*")'
+        Password entry with delayed hiding. Alternative to `Entry(master, show="*")'.
+        Supports all common character sets(1aA!), multy keys(^`˝) and under Linux also the alternative graphics(↑Ωł).
+
+        {Deletes the input from the widget and writes it casually into a variable. Markings and the position
+        of the cursor is respected.}
+
 
         howto get the password:
             - by protected member self._password
             - by calling self.getpass (args `getpass_*' executed here)
             - by calling self.get (args `getpass_*' executed here)
 
+
         :param master: root tk
         :param show: displayed char
         :param delay: hiding delay
         :param getpass_range: check password length
         :param getpass_call: callable, gets `self._password' as argument
-        :param getpass_del: delete `self.password' and flush entry if True
-        :param tk_kwargs: Valid resource names: background, bd, bg, borderwidth, cursor,
-        exportselection, fg, font, foreground, highlightbackground,
-        highlightcolor, highlightthickness, insertbackground,
-        insertborderwidth, insertofftime, insertontime, insertwidth,
-        invalidcommand, invcmd, justify, relief, selectbackground,
-        selectborderwidth, selectforeground, state, takefocus,
-        textvariable, validate, validatecommand, vcmd, width,
-        xscrollcommand.
+        :param getpass_del: delete `self._password' and flush entry if True
+        :param tk_kwargs: Valid resource names: background, bd, bg, borderwidth, cursor, exportselection, fg, font, foreground, highlightbackground, highlightcolor, highlightthickness, insertbackground, insertborderwidth, insertofftime, insertontime, insertwidth, invalidcommand, invcmd, justify, relief, selectbackground, selectborderwidth, selectforeground, state, takefocus, textvariable, validate, validatecommand, vcmd, width, xscrollcommand
         """
 
         self._password: str = ""
@@ -85,8 +83,20 @@ class PassEntry(Entry):
         self.get = self.getpass
 
         if platform == "linux":
+            # (
+            # MultyKeys,                    ^ ` ọ ˇ
+            # NoModifier,                   a b c d
+            # Shift+Key,                    A B C D
+            # AltGr+Key(AT-Layout),         @ ł | ~
+            # AltGr+Shift+Key(AT-Layout)    Ω Ł ÷ ⅜
+            # )
             self._states = (0, 16, 17, 144, 145)
         elif platform == "win32":
+            # (
+            # AltGr+Key(AT-Layout),         @ \ | }
+            # NoModifier,                   a b c d
+            # Shift+Key,                    A B C D
+            # )
             self._states = (0, 8, 9)
 
     def _char(self, event) -> str:
@@ -96,7 +106,7 @@ class PassEntry(Entry):
 
         if event.keysym in ('Delete', 'BackSpace'):
             return ""
-        elif event.keysym == "Multi_key" and len(event.char) == 2:
+        elif event.keysym == "Multi_key" and len(event.char) == 2:  # windows stuff
             if event.char[0] == event.char[1]:
                 self.after(10, del_mkey)
                 return event.char[0]
