@@ -13,7 +13,7 @@ A small collection of python scripted useful tk widgets.
 
 - ### PassEntry.py
 
-    Password entry with delayed hiding. Alternative to `Entry(master, show="*")'
+    Password entry with delayed hiding. Alternative to `Entry(master, show=*)'
 
 - ### ScrollCell.py
 
