@@ -36,6 +36,7 @@ class TextHighlighter:
                  text: Text,
                  main_config: dict[Pattern]=False,
                  first_clause: dict[Pattern]=False,
+                 return_clause: set[Pattern]=False,
                  sub_loop: list[dict[Pattern], set[Pattern], dict[Pattern]]=False,
                  strict_sub_loop: list[dict[Pattern], set[Pattern], dict[Pattern]]=False,
                  at_call: dict[Pattern]=None,
@@ -48,13 +49,14 @@ class TextHighlighter:
 
         **Loops configurations = [first_clauses=*Configuration, break_clauses=set(Pattern), loop_configs=*Configuration]
 
-        The process starts with execution of self.highlight.
+        The process starts with execution of `self.highlight'.
         In case multiple highlighters are to be used for different sectors, `self.highlight'
-        returns the line number of the last match.
+        returns the line number of the last match, and the process can be aborted earlier by the `return_clause'.
 
         :param text: tk-text
         :param main_config: Main configuration, a library whose keys are regular expressions and whose values are a kwargs for the tag_config method.
         :param first_clause: One of his *Configurations must first apply.
+        :param return_clause: If one of the patterns is matched, it is aborted and the line of the last match is returned.
         :param sub_loop: Configurations for a special loop, the main configurations are still respected.
         :param strict_sub_loop: Strict loop, do not pay attention to the main configurations. But those of the parent loop when nested.
         :param at_call: (Global) Execute a function if the pattern matches. The function gets the line, the line number and the re.match.  If by this TextHighlighting itself is changed, the RuntimeError is caught and executed again.
@@ -63,6 +65,7 @@ class TextHighlighter:
         self.text: Text = text
         self.config: dict[Pattern] = (main_config if main_config else {})
         self.first_clause: dict[Pattern] = first_clause
+        self.return_clause: set[Pattern] = (return_clause if return_clause else set())
         self.sub_loop: list[dict[Pattern], set[Pattern], dict[Pattern]] = (sub_loop if sub_loop else [{}, set(), {}])
         self.strict_sub_loop: list[dict[Pattern], set[Pattern], dict[Pattern]] = (strict_sub_loop if strict_sub_loop else [{}, set(), {}])
         self.at_call = (at_call if at_call else {})
@@ -96,18 +99,17 @@ class TextHighlighter:
             self.sub_tags: dict[str, set] = dict()
             self.ssub_tags: dict[str, set] = dict()
 
-        first_clause = (self.first_clause if note_first_clause else False)
+        _config = (self.first_clause if self.first_clause and note_first_clause else self.config)
         inside_sub_loop = False
         inside_ssub_loop = False
 
         self._read_start = read_start
-        _start = self._read_start
 
-        for n, ln in enumerate(self.text.get(_start, END).splitlines(), int(search("\d+", _start).group())):
-            if first_clause:
-                _config = self.first_clause
-            else:
-                _config = self.config
+        for n, ln in enumerate(self.text.get(read_start, END).splitlines(), int(search("\d+", read_start).group())):
+
+            for p in self.return_clause:
+                if search(p, ln):
+                    return int(self._read_start.split('.')[0])
 
             try:
                 for p in self.at_call:
@@ -167,11 +169,11 @@ class TextHighlighter:
             for p in _config:
                 matched = False
                 for m in finditer(p, ln):
-                    first_clause = False
                     matched = True
                     _id = self._add_tag(n, m, _config[p])
                     self.alltags.add(_id)
                 if matched:
+                    _config = self.config
                     self._read_start = "%d.0" % n
 
         return int(self._read_start.split('.')[0])
@@ -368,10 +370,11 @@ Improved By :
                     kforeground: "white"
                 }
             }
-        ]
+        ],
+        #return_clause={compile("^-{10}"),}
     ).highlight(True)
 
-    text.insert(f"{last_match}.1000", f" < {last_match=}")
+    text.insert(f"{last_match}.1000", f"        <------   [ {last_match=} ]")
 
     t.mainloop()
 
