@@ -1,6 +1,6 @@
 # widgets-tk
 
-A small collection of python scripted useful tk widgets.
+A small collection of python scripted tk widgets.
 
 ****
 - ### treeselectpopup.py
