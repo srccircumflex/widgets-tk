@@ -358,10 +358,6 @@ class SelectTree(ttk.Treeview):
         <tk> = None
     - width
         int = None
-    - _restructure
-        bool = True
-
-        Must be left at True if the structure is not compiled.
     - **tk_kwargs
         piped to ttk.Treeview
     
@@ -402,7 +398,6 @@ class SelectTree(ttk.Treeview):
             tags_config: TagsConfig = TagsConfig(),
             master=None,
             width: int = None,
-            _restructure: bool = True,
             **tk_kwargs
     ):
         ttk.Treeview.__init__(self, master, show="tree", **tk_kwargs)
@@ -412,7 +407,7 @@ class SelectTree(ttk.Treeview):
 
         tags_config.configure(self)
 
-        self.load(structure, restructure=_restructure)
+        self.load(structure)
 
     def _change_check_tag(self, iid: str, tag: str):
         tags = set(self.item(iid, "tags"))
@@ -455,15 +450,9 @@ class SelectTree(ttk.Treeview):
 
         return dmp()
 
-    def load(
-            self,
-            structure: Iterable[TreeNode],
-            restructure: bool = False
-    ) -> None:
+    def load(self, structure: Iterable[TreeNode]) -> None:
         """
         Reset the entire structure.
-
-        `restructure` must be left at True if the structure is not compiled (not required if structure comes from ``dump``).
         """
         self.delete(*self.get_children())
 
@@ -472,92 +461,59 @@ class SelectTree(ttk.Treeview):
         entry_iids = list()
 
         self.structure = TreeNode.ROOT(structure)
+        import pprint
+        pprint.pp(self.structure)
 
-        if restructure:
-            self.structure.compile()
+        self.structure.compile()
 
-            def make(struc, parent=""):
-                for _node in struc:
-                    _node: TreeNode
-                    iid = _node.iid_path
-                    tags = _node.tags
-                    if _node.children:
-                        if _node.parent.parent:
-                            tags += (TagsConfig.t_sub_sector,)
-                            sub_sector_iids.append(iid)
-                        else:
-                            tags += (TagsConfig.t_top_sector,)
-                            top_sector_iids.append(iid)
-                        if _node.checked is None:
-                            tags += (TagsConfig.c_ccstate_sector,)
-                        elif _node.checked:
-                            tags += (TagsConfig.c_check_sector,)
-                        else:
-                            tags += (TagsConfig.c_uncheck_sector,)
-
-                        self.insert(
-                            parent,
-                            text=_node.label,
-                            values=_node.values,
-                            index="end",
-                            iid=iid,
-                            tags=tags,
-                            open=_node.opened
-                        )
-
-                        make(_node.children, iid)
+        def make(struc, parent=""):
+            for _node in struc:
+                _node: TreeNode
+                iid = _node.iid_path
+                tags = _node.tags
+                if _node.children:
+                    if _node.parent.parent:
+                        tags += (TagsConfig.t_sub_sector,)
+                        sub_sector_iids.append(iid)
                     else:
-                        tags += (TagsConfig.t_entry,)
-                        if _node.checked:
-                            tags += (TagsConfig.c_check_entry,)
-                        else:
-                            tags += (TagsConfig.c_uncheck_entry,)
-
-                        self.insert(
-                            parent,
-                            text=_node.label,
-                            values=_node.values,
-                            index="end",
-                            iid=iid,
-                            tags=tags,
-                            open=_node.opened
-                        )
-
-                        entry_iids.append(iid)
-
-        else:
-            def make(struc, parent=""):
-                for _node in struc:
-                    _node: TreeNode
-                    iid = _node.iid_path
-                    tags = _node.tags
-                    if _node.children:
-                        self.insert(
-                            parent,
-                            text=_node.label,
-                            values=_node.values,
-                            index="end",
-                            iid=iid,
-                            tags=tags,
-                            open=_node.opened
-                        )
-                        if not _node.parent.parent:
-                            top_sector_iids.append(iid)
-                        else:
-                            sub_sector_iids.append(iid)
-
-                        make(_node.children, iid)
+                        tags += (TagsConfig.t_top_sector,)
+                        top_sector_iids.append(iid)
+                    if _node.checked is None:
+                        tags += (TagsConfig.c_ccstate_sector,)
+                    elif _node.checked:
+                        tags += (TagsConfig.c_check_sector,)
                     else:
-                        self.insert(
-                            parent,
-                            text=_node.label,
-                            values=_node.values,
-                            index="end",
-                            iid=iid,
-                            tags=tags,
-                            open=_node.opened
-                        )
-                        entry_iids.append(iid)
+                        tags += (TagsConfig.c_uncheck_sector,)
+
+                    self.insert(
+                        parent,
+                        text=_node.label,
+                        values=_node.values,
+                        index="end",
+                        iid=iid,
+                        tags=tags,
+                        open=_node.opened
+                    )
+
+                    make(_node.children, iid)
+                else:
+                    tags += (TagsConfig.t_entry,)
+                    if _node.checked:
+                        tags += (TagsConfig.c_check_entry,)
+                    else:
+                        tags += (TagsConfig.c_uncheck_entry,)
+
+                    self.insert(
+                        parent,
+                        text=_node.label,
+                        values=_node.values,
+                        index="end",
+                        iid=iid,
+                        tags=tags,
+                        open=_node.opened
+                    )
+
+                    entry_iids.append(iid)
 
         make(self.structure)
 
