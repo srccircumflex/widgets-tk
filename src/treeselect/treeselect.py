@@ -461,8 +461,6 @@ class SelectTree(ttk.Treeview):
         entry_iids = list()
 
         self.structure = TreeNode.ROOT(structure)
-        import pprint
-        pprint.pp(self.structure)
 
         self.structure.compile()
 
