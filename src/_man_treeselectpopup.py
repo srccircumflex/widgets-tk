@@ -49,7 +49,7 @@ MANUAL = (
     ("Window Resize",
      """
 · <F2>......resize window to 40x100
-· <F3>......resize window to 40x200
+# · <F3>......resize window to 40x200
 · <F4>......resize window to 60x100
 · <F5>......resize window to 60x200
 · <F6>......resize window to 75x100

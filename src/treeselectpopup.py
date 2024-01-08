@@ -121,6 +121,8 @@ def treepopup(
             "instand value",
             "value at action"
         ] = "wait value",
+        exit_at_confirm: bool = True,
+        exit_at_cancel: bool = True,
         tags_config_update: TagsConfig = TagsConfig(),
         ttk_styler: Callable[[ttk.Style], dict] | None = __default_ttk_styler
 ) -> TkBgReceiver[list[TreeNode | None]] | list[TreeNode | None]:
@@ -217,21 +219,26 @@ def treepopup(
 
         sizing_b = root.bind("<Configure>", sizing)
 
-        def fin(obj):
-            server.send(obj)
+        def close(e):
+            server.send(None)
             server.exit()
 
+        root.bind("<Escape>", close)
+        root.bind("<Control-c>", close)
+
         def cancel(e):
-            fin(None)
+            server.send(None)
+            if exit_at_cancel:
+                server.exit()
 
         widget.cancel_button.bind("<Button-1>", cancel)
         widget.cancel_button.bind("<Return>", cancel)
         widget.cancel_button.bind("<space>", cancel)
-        root.bind("<Escape>", cancel)
-        root.bind("<Control-c>", cancel)
 
         def confirm(e):
-            fin(widget.tree.get_checked())
+            server.send(widget.tree.get_checked())
+            if exit_at_confirm:
+                server.exit()
 
         widget.confirm_button.bind("<Button-1>", confirm)
         widget.confirm_button.bind("<Return>", confirm)
@@ -252,7 +259,7 @@ def treepopup(
             widget.tree.bind("#", confirm, add=True)
 
         root.bind("<F2>", lambda _: widget.resize(40, 100))
-        root.bind("<F3>", lambda _: widget.resize(40, 200))
+        # root.bind("<F3>", lambda _: widget.resize(40, 200))
         root.bind("<F4>", lambda _: widget.resize(60, 100))
         root.bind("<F5>", lambda _: widget.resize(60, 200))
         root.bind("<F6>", lambda _: widget.resize(75, 100))
