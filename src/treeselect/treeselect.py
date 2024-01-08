@@ -195,7 +195,7 @@ class TreeNode(dict):
             opened: bool = False,
             tags: tuple[str, ...] = (),
             iid_sep: str = ".",
-            _iid_path: str = ""
+            iid_path: str = ""
     ):
         dict.__init__(self)
         self.label = label
@@ -205,7 +205,7 @@ class TreeNode(dict):
         self.checked = checked
         self.opened = opened
         self.tags = tags
-        self.iid_path = _iid_path
+        self.iid_path = iid_path
         self.iid_sep = iid_sep
 
     def from_treeitem(
@@ -227,13 +227,13 @@ class TreeNode(dict):
             checked=checked,
             opened=opened,
             tags=tags,
-            _iid_path=tn.iid_path
+            iid_path=tn.iid_path
         )
 
     @classmethod
     def ROOT(cls, children: Iterable[TreeNode]) -> TreeNode:
         """Create a root point with `children` (used by :class:`SelectTree`)"""
-        return TreeNode("", "", *children, iid_sep="", _iid_path="")
+        return TreeNode("", "", *children, iid="#", iid_sep="", iid_path="")
 
     def compile(self) -> set[bool, bool] | set[bool] | set:
         """Compile the `iid_path`'s and check-states."""
@@ -241,7 +241,8 @@ class TreeNode(dict):
         def make(node: TreeNode):
             checks = set()
             for _child in node:
-                _child.iid_path = node.iid_path + node.iid_sep + _child.iid
+                if not _child.iid_path:
+                    _child.iid_path = node.iid_path + node.iid_sep + _child.iid
                 _child.parent = node
                 if _child.checked is None:
                     _child.checked = node.checked
@@ -302,7 +303,7 @@ class TreeNode(dict):
             checked=__dict["checked"],
             opened=__dict["opened"],
             tags=__dict["tags"],
-            _iid_path=__dict["iid_path"]
+            iid_path=__dict["iid_path"]
         )
 
     def get_children(self, iid_path: str, depth: bool = True) -> TreeNode:
@@ -366,6 +367,7 @@ class SelectTree(ttk.Treeview):
     - get_matches
     - get_next_match
     - selection_to_next_match
+    - expand_for_tag
     - expand_for_match
     - remove_match_tags
     - toggle_check
@@ -638,15 +640,15 @@ class SelectTree(ttk.Treeview):
                 start_iid_path = self.iid_path_by_selected()
             if reverse:
                 matches.reverse()
+            matches_iids = [i.iid_path for i in matches]
             try:
-                return matches[matches.index(start_iid_path) + 1]
+                return matches[matches_iids.index(start_iid_path) + 1]
             except IndexError:
                 if back_to_begin:
                     return matches[0]
                 else:
                     return
             except ValueError:
-                matches_iids = [i.iid_path for i in matches]
                 main_list = self.get_linear_iid_path_list()
                 if reverse:
                     main_list.reverse()
@@ -689,21 +691,34 @@ class SelectTree(ttk.Treeview):
         """
         if match := self.get_next_match(start_iid, parent_iid, scip_hints, scip_sectors, reverse, back_to_begin):
             self.set_selection(match)
-            self.focus(match)
+            self.focus(match.iid_path)
+            self.see(match.iid_path)
         return match
 
-    def expand_for_match(self) -> None:
-        """Expand the tree to show search matches."""
+    def expand_for_tag(self, cond: Callable[[tuple[str, ...]], bool], start_iid_path: str = "") -> bool:
+        """Expand the tree to show entries witch cond(entry.tags) is true. Return whether something matched."""
+        match = False
 
-        def x(_iid=""):
-            for t in self.item(_iid, "tags"):
-                if t.startswith("m-"):
-                    self.item(_iid, open=True)
+        def r(_iid=start_iid_path):
+            nonlocal match
+            if cond(self.item(_iid, "tags")):
+                self.item(_iid, open=True)
+                match = True
             children = self.get_children(_iid)
             for _iid in children:
-                x(_iid)
+                r(_iid)
+        r()
+        return match
 
-        x()
+    def expand_for_match(self) -> bool:
+        """Expand the tree to show search matches. Return whether matches are present."""
+
+        def x(tags):
+            for t in tags:
+                if t.startswith("m-"):
+                    return True
+
+        return self.expand_for_tag(x)
 
     def remove_match_tags(self, parent_iid: str = ""):
         """Purge search-tags, started from `parent_iid` (recursive)."""
@@ -738,12 +753,17 @@ class SelectTree(ttk.Treeview):
                 self._change_check_tag(_iid, _tag)
                 parent = self.parent(_iid)
                 if parent:
-                    children = self.get_children(parent)
-                    states = set((TagsConfig.c_check_entry in (i := self.item(c, "tags")) or TagsConfig.c_check_sector in i) for c in children)
+                    children_tags = tuple(self.item(c, "tags") for c in self.get_children(parent))
+                    states = set((TagsConfig.c_check_entry in t or TagsConfig.c_check_sector in t) for t in children_tags)
                     if all(states):
                         _tag = TagsConfig.c_check_sector
                     elif len(states) == 1:
-                        _tag = TagsConfig.c_uncheck_sector
+                        for t in children_tags:
+                            if TagsConfig.c_ccstate_sector in t:
+                                _tag = TagsConfig.c_ccstate_sector
+                                break
+                        else:
+                            _tag = TagsConfig.c_uncheck_sector
                     else:
                         _tag = TagsConfig.c_ccstate_sector
                     __toggle_parents(parent, _tag)
@@ -1237,7 +1257,6 @@ class SelectTreeWidget(ttk.Frame):
                 pattern = compile(escape(pattern), IGNORECASE)
             if self.tree.search(pattern):
                 self.tree.toggle_recursive_expand(expand=False)
-                self.tree.expand_for_match()
         else:
             self.tree.remove_match_tags()
 
@@ -1272,6 +1291,7 @@ class SelectTreeWidget(ttk.Frame):
                 reverse=reverse,
                 back_to_begin=to_begin,
         ):
+            self.tree.expand_for_match()
             self.tree.focus_set()
         self._match_end__reverse_mode[0], self._match_end__reverse_mode[1] = m is None, reverse
 
