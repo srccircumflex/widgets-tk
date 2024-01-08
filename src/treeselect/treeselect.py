@@ -86,11 +86,7 @@ class TagsConfig:
             # (Trial-and-Error knowledge)
             # If the PhotoImages are not saved in an attribute of the object, they are not displayed.
             # They are probably deleted in the process by the garbage collector.
-            for itm in kw.items():
-                attr = "_%s_%s" % (tag, itm[0])
-                setattr(tree, attr, itm[1])
-                kw[itm[0]] = getattr(tree, attr)
-
+            setattr(tree, "." + tag, kw)
             tree.tag_configure(tag, **kw)
 
     def __or__(self, other: TagsConfig):
@@ -1169,8 +1165,7 @@ class SelectTreeWidget(ttk.Frame):
         self.tree.configure(style="select.Treeview")
 
         if ttk_styler is not None:
-            gl = globals()
-            gl |= {"." + k: v for k, v in ttk_styler(ttk.Style(master)).items()}
+            setattr(self, ".style", {"." + k: v for k, v in ttk_styler(ttk.Style(master)).items()})
 
         self.tree.bind("<Button-1>", self.toggle_check, add=True)
         self.tree.bind("<Double-Button-1>", lambda e: (self.toggle_check(e, _iid) if (_iid := self.tree.iid_path_by_selected()) not in self.tree.all_sector_iids else None))
