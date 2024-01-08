@@ -86,7 +86,7 @@ class TagsConfig:
             # (Trial-and-Error knowledge)
             # If the PhotoImages are not saved in an attribute of the object, they are not displayed.
             # They are probably deleted in the process by the garbage collector.
-            setattr(tree, "." + tag, kw)
+            setattr(tree, "," + tag, kw)
             tree.tag_configure(tag, **kw)
 
     def __or__(self, other: TagsConfig):
